@@ -139,17 +139,6 @@ action_manager.reset_all(true)  # also clears repeat config
 
 ---
 
-## Notes
-
-- Actions are automatically blocked based on `_blocked_actions` and `_blocked_groups`.
-- Long press and double tap timers are handled internally.
-- `get_vector` and `get_axis` respect the deadzone.
-- Manual injection is useful for AI, replays, or touch UI.
-- Signals allow hooking directly into input events if needed.
-- **Device filtering** is handled by Godot InputMap, no manual filtering is required in ActionManager.
-
----
-
 ## Example: Movement
 
 ```gdscript
