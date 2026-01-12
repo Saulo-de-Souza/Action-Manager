@@ -1,552 +1,79 @@
+@tool
 @icon("./icon.svg")
 
-## [b]ActionManager[/b] is an advanced input manager for Godot 4.5 that provides a unified API for reliable input handling and full state control.[br][br]
-## It supports long press, double tap, toggle, oneshot actions, configurable input repetition, action/group blocking, and manual input injection.[br]
-## It emits signals for mouse, keyboard, and gamepad events, making input handling consistent across devices.
+
 class_name ActionManager extends Node
 
 
-# ---------------------------------------------------------
-# SIGNALS
-# ---------------------------------------------------------
-## Emitted for every input event received by the manager.[br][br]
-signal all_event(event: InputEvent)
-
-## Emitted when a mouse motion event is detected.[br][br]
-signal mouse_motion_event(event: InputEventMouseMotion)
-
-## Emitted when a mouse button event is detected.[br][br]
-signal mouse_button_event(event: InputEventMouseButton)
-
-## Emitted when a keyboard key event is detected.[br][br]
-signal key_event(event: InputEventKey)
-
-## Emitted when a gamepad button event is detected.[br][br]
-signal joy_button_event(event: InputEventJoypadButton)
-
-## Emitted when a gamepad motion (analog) event is detected.[br][br]
-signal joy_motion_event(event: InputEventJoypadMotion)
+@export var actions: Dictionary[StringName, ActionManagerData]:
+	set(value):
+		actions = value
+		if not is_inside_tree(): await tree_entered
+		if not is_node_ready(): await ready
+		await get_tree().process_frame
+		for key in actions:
+			var action: ActionManagerData = actions.get(key)
+			if action:
+				action._init_owner(self)
+		update_configuration_warnings()
 
 
-# ---------------------------------------------------------
-# EXPORTS
-# ---------------------------------------------------------
-## [b]Enables or disables all input handling.[/b][br][br]
-## When disabled, all actions are reset and input events are ignored.[br]
-## Example usage:[br]
-## [code]action_manager.input_enabled = false[/code]
-@export var input_enabled: bool = true: set = set_input_enabled, get = get_input_enabled
-
-
-@export_category("Default")
-@export_group("Default Times", "default_")
-
-## [b]Time threshold (in seconds) to detect a long press.[/b][br][br]
-## This value is the default for all actions, used as an example. You can modify it per action or delete it entirely.[br]
-## Example usage in code:[br]
-## [code]action_manager.default_long_press_time = 0.6[/code]
-@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_long_press_time := 0.5
-
-
-## [b]Maximum time (in seconds) between taps to detect a double tap.[/b][br][br]
-## Default value for all actions. Can be overwritten per action.[br]
-## Example usage:[br]
-## [code]action_manager.default_double_tap_time = 0.3[/code]
-@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_double_tap_time := 0.25
-
-
-## [b]Delay (in seconds) before action repetition starts.[/b][br][br]
-## Default repeat delay for actions. Adjust individually if needed.[br]
-## Example usage:[br]
-## [code]action_manager.default_repeat_delay = 0.4[/code]
-@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_repeat_delay := 0.2
-
-
-## [b]Interval (in seconds) between repeated action signals after the initial delay.[/b][br][br]
-## Default repeat interval. Can be customized per action.[br]
-## Example usage:[br]
-## [code]action_manager.default_repeat_interval = 0.3[/code]
-@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_repeat_interval := 0.2
-
-
-@export_category("Blocked Actions")
-@export_group("Groups")
-
-## [b]Action groups dictionary.[/b][br][br]
-## Keys are group names, values are arrays of action names.[br]
-## You can modify, add, or remove groups as needed.[br][br]
-## Examples:[br]
-## [code]
-## # Adding a new group
-## action_manager.action_groups["Combat"] = ["attack", "block", "dodge"]
-##
-## # Overwriting an existing group
-## action_manager.action_groups["Pause"] = ["ui_up", "ui_down", "ui_accept"]
-##
-## # Removing a group
-## action_manager.action_groups.erase("RadialMenu")
-## [/code]
-@export var action_groups: Dictionary[StringName, Array] = {"Pause": ["ui_left", "ui_right", "ui_up", "ui_down", "ui_accept"], "RadialMenu": ["ui_accept"]}
-
-@export_group("Block Groups")
-
-## [b]Blocked groups dictionary.[/b][br][br]
-## Keys are group names, values are boolean. True = blocked, False = active.[br]
-## Works only if the group exists in [action_groups].[br][br]
-## Examples:[br]
-## [code]
-## # Block the "Pause" group
-## action_manager.blocked_groups["Pause"] = true
-##
-## # Unblock the "RadialMenu" group
-## action_manager.blocked_groups["RadialMenu"] = false
-##
-## # Add and block a new group
-## action_manager.action_groups["Combat"] = ["attack", "block", "dodge"]
-## action_manager.blocked_groups["Combat"] = true
-## [/code]
-@export var blocked_groups: Dictionary[StringName, bool] = {"Pause": false, "RadialMenu": false}
-
-@export_group("Block Actions")
-
-## [b]Blocked actions dictionary.[/b][br][br]
-## Keys are action names, values are boolean. True = blocked, False = active.[br]
-## Can be modified at runtime or in the inspector.[br][br]
-## Examples:[br]
-## [code]
-## # Block a single action
-## action_manager.blocked_actions["ui_menu"] = true
-##
-## # Unblock a single action
-## action_manager.blocked_actions["ui_menu"] = false
-##
-## # Add and block a new action
-## action_manager.blocked_actions["attack"] = true
-## [/code]
-@export var blocked_actions: Dictionary[StringName, bool] = {"ui_menu": false}
-
-
-# ---------------------------------------------------------
-# PRIVATE PROPERTIES
-# ---------------------------------------------------------
-var _actions_pressed: Dictionary[StringName, bool] = {}
-var _actions_oneshot: Dictionary[StringName, bool] = {}
-var _actions_toggle: Dictionary[StringName, bool] = {}
-var _actions_press_time: Dictionary[StringName, float] = {}
-var _actions_long_press: Dictionary[StringName, bool] = {}
-var _actions_last_tap_time: Dictionary[StringName, float] = {}
-var _actions_double_tap: Dictionary[StringName, bool] = {}
-var _actions_long_press_triggered: Dictionary[StringName, bool] = {}
-var _actions_long_press_hold: Dictionary[StringName, bool] = {}
-var _actions_repeat_timer: Dictionary[StringName, float] = {}
-var _actions_repeat: Dictionary[StringName, bool] = {}
-var _actions_repeat_config: Dictionary = {}
-var _input_enabled_internal: bool = true
-var _keycode_to_actions := {}
-var _mouse_button_to_actions := {}
-var _joy_button_to_actions := {}
-
-
-# ---------------------------------------------------------
-# ENGINE METHODS
-# ---------------------------------------------------------
-func _ready() -> void:
-	_build_input_cache()
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	all_event.emit(event)
-
-	if event is InputEventMouseMotion:
-		mouse_motion_event.emit(event)
-	elif event is InputEventMouseButton:
-		mouse_button_event.emit(event)
-	elif event is InputEventKey:
-		key_event.emit(event)
-	elif event is InputEventJoypadButton:
-		joy_button_event.emit(event)
-	elif event is InputEventJoypadMotion:
-		joy_motion_event.emit(event)
+enum action_type {PRESSED, JUST_PRESSED, RELEASED, TOGGLE, LONG_PRESS, LONG_PRESS_HOLD, REPEAT}
 
 
 func _process(delta: float) -> void:
-	if not _input_enabled_internal:
-		return
-
-	_sync_actions_from_input()
-
-	for action in _actions_pressed:
-		if not _actions_pressed[action]:
-			continue
-
-		_actions_press_time[action] += delta
-
-		if (_actions_press_time[action] >= default_long_press_time and not _actions_long_press_triggered.get(action, false) and not _is_action_blocked(action)):
-			_actions_long_press[action] = true
-			_actions_long_press_triggered[action] = true
-			_actions_long_press_hold[action] = true
-
-		if _actions_long_press_triggered.get(action, false):
-			_actions_long_press_hold[action] = true
-
-		_actions_repeat_timer[action] = _actions_repeat_timer.get(action, 0.0) + delta
-
-		var delay := default_repeat_delay
-		var interval := default_repeat_interval
-
-		if _actions_repeat_config.has(action):
-			var cfg = _actions_repeat_config[action]
-			delay = cfg.get("delay", default_repeat_delay)
-			interval = cfg.get("interval", default_repeat_interval)
-
-		if _actions_repeat_timer[action] < delay:
-			continue
-
-		var repeat_time := _actions_repeat_timer[action] - delay
-		if repeat_time >= interval:
-			_actions_repeat[action] = true
-			_actions_repeat_timer[action] = delay
+	for key in actions:
+		var data: ActionManagerData = actions[key]
+		if data:
+			data.update(delta)
 
 
-# ---------------------------------------------------------
-# PUBLIC METHODS
-# ---------------------------------------------------------
-## Injects an input action manually.[br]
-## [code]manager.inject_action("jump", true)[/code][br][br]
-func inject_action(action: StringName, pressed: bool) -> void:
-	if not _input_enabled_internal or _is_action_blocked(action):
-		return
+func _get_configuration_warnings() -> PackedStringArray:
+	var warnings: PackedStringArray = []
 
-	if pressed:
-		_press_action(action)
-	else:
-		_release_action(action)
+	for key in actions:
+		var action: ActionManagerData = actions.get(key)
+		if action:
+			if not action.action in InputMap.get_actions():
+				warnings.append("Action name %s not found."%action.action)
 
 
-## Sets custom delay and interval for repeated action signals.[br]
-## [code]manager.set_action_repeat("shoot", 0.5, 0.1)[/code][br][br]
-func set_action_repeat(action: StringName, delay: float, interval: float) -> void:
-	_actions_repeat_config[action] = {
-		"delay": delay,
-		"interval": interval
-	}
+	return warnings
 
 
-## Returns true if the action is currently pressed.[br]
-## [code]if manager.get_action_pressed("move_right"):[/code][br][br]
-func get_action_pressed(action: StringName) -> bool:
-	return _actions_pressed.get(action, false) and not _is_action_blocked(action)
-
-
-## Returns true while the action is being held down.[br]
-## [code]if manager.get_action_hold("run"):[/code][br][br]
-func get_action_hold(action: StringName) -> bool:
-	return get_action_pressed(action)
-
-
-## Returns true only once when the action is pressed (oneshot). Resets automatically.[br]
-## [code]if manager.get_action_oneshot("jump"):[/code][br][br]
-func get_action_oneshot(action: StringName) -> bool:
-	if _is_action_blocked(action):
+func get_action(action_name: StringName) -> bool:
+	var action_data := get_action_data(action_name)
+	if not action_data:
 		return false
 
-	if _actions_oneshot.get(action, false):
-		_actions_oneshot[action] = false
-		return true
-	return false
+	match action_data.action_type:
+		action_type.PRESSED:
+			return Input.is_action_pressed(action_data.action)
 
+		action_type.JUST_PRESSED:
+			return Input.is_action_just_pressed(action_data.action)
 
-## Returns the toggle state of the action (changes each press).[br]
-## [code]var active = manager.get_action_toggle("switch_weapon")[/code][br][br]
-func get_action_toggle(action: StringName) -> bool:
-	if _is_action_blocked(action):
-		return false
-	return _actions_toggle.get(action, false)
+		action_type.RELEASED:
+			return Input.is_action_just_released(action_data.action)
 
+		action_type.TOGGLE:
+			return action_data._toggle_state
 
-## Returns true if a long press is detected and resets the long press state.[br]
-## [code]if manager.get_action_long_press("charge"):[/code][br][br]
-func get_action_long_press(action: StringName) -> bool:
-	if _is_action_blocked(action):
-		return false
+		action_type.LONG_PRESS:
+			return action_data._event_fired
 
-	if _actions_long_press.get(action, false):
-		_actions_long_press[action] = false
-		return true
-	return false
+		action_type.LONG_PRESS_HOLD:
+			return action_data._hold_state
 
+		action_type.REPEAT:
+			return action_data._event_fired
 
-## Returns true if a double tap is detected and resets the state.[br]
-## [code]if manager.get_action_double_tap("dash"):[/code][br][br]
-func get_action_double_tap(action: StringName) -> bool:
-	if _is_action_blocked(action):
-		return false
+		_:
+			return false
 
-	if _actions_double_tap.get(action, false):
-		_actions_double_tap[action] = false
-		return true
-	return false
 
-
-## Returns true while holding a long press.[br]
-## [code]if manager.get_action_long_press_hold("charge"):[/code][br][br]
-func get_action_long_press_hold(action: StringName) -> bool:
-	if _is_action_blocked(action):
-		return false
-
-	return (
-		_actions_long_press_hold.get(action, false)
-		and _actions_pressed.get(action, false)
-	)
-
-
-## Returns true if a repeated action is triggered (after delay and interval). Resets automatically.[br]
-## [code]if manager.get_action_repeat("shoot"):[/code][br][br]
-func get_action_repeat(action: StringName) -> bool:
-	if _is_action_blocked(action):
-		return false
-
-	if _actions_repeat.get(action, false):
-		_actions_repeat[action] = false
-		return true
-
-	return false
-
-
-## Enables or disables all input handling. Disables will reset all action states.[br]
-## [code]manager.set_input_enabled(false)[/code][br][br]
-func set_input_enabled(enabled: bool) -> void:
-	_input_enabled_internal = enabled
-	if not enabled:
-		reset_all()
-
-
-## Returns the current input enabled state.[br]
-## [code]if manager.get_input_enabled():[/code][br][br]
-func get_input_enabled() -> bool:
-	return _input_enabled_internal
-
-
-## Blocks a specific action, preventing it from updating until unblocked.[br]
-## [code]manager.block_action("shoot")[/code][br][br]
-func block_action(action: StringName) -> void:
-	blocked_actions[action] = true
-	reset_action(action)
-
-
-## Unblocks a previously blocked action.[br]
-## [code]manager.unblock_action("shoot")[/code][br][br]
-func unblock_action(action: StringName) -> void:
-	blocked_actions.erase(action)
-
-
-## Registers a group of actions for easier blocking/unblocking by group.[br]
-## [code]manager.register_action_group("movement", ["move_left","move_right","jump"])[/code][br][br]
-func register_action_group(group: StringName, actions: Array[StringName]) -> void:
-	action_groups[group] = actions
-
-
-## Blocks an entire action group.[br]
-## [code]manager.block_group("movement")[/code][br][br]
-func block_group(group: StringName) -> void:
-	blocked_groups[group] = true
-
-	for action in action_groups.get(group, []):
-		reset_action(action)
-
-
-## Unblocks an entire action group.[br]
-## [code]manager.unblock_group("movement")[/code][br][br]
-func unblock_group(group: StringName) -> void:
-	blocked_groups.erase(group)
-
-
-## Clears any custom repeat settings for an action.[br]
-## [code]manager.clear_action_repeat("shoot")[/code][br][br]
-func clear_action_repeat(action: StringName) -> void:
-	_actions_repeat_config.erase(action)
-
-
-## Resets a specific action's state completely.[br]
-## [code]manager.reset_action("jump")[/code][br][br]
-func reset_action(action: StringName) -> void:
-	_actions_pressed[action] = false
-	_actions_oneshot[action] = false
-	_actions_toggle[action] = false
-	_actions_press_time[action] = 0.0
-	_actions_long_press[action] = false
-	_actions_long_press_triggered[action] = false
-	_actions_long_press_hold[action] = false
-	_actions_double_tap[action] = false
-	_actions_last_tap_time.erase(action)
-	_actions_repeat[action] = false
-	_actions_repeat_timer[action] = 0.0
-
-
-## Resets all actions and optionally clears repeat configurations.[br]
-## [code]manager.reset_all(true)[/code][br][br]
-func reset_all(reset_actions_repeat_config: bool = false) -> void:
-	_actions_pressed.clear()
-	_actions_oneshot.clear()
-	_actions_toggle.clear()
-	_actions_press_time.clear()
-	_actions_long_press.clear()
-	_actions_long_press_triggered.clear()
-	_actions_long_press_hold.clear()
-	_actions_double_tap.clear()
-	_actions_last_tap_time.clear()
-	_actions_repeat.clear()
-	_actions_repeat_timer.clear()
-
-	if reset_actions_repeat_config:
-		_actions_repeat_config.clear()
-
-
-# ---------------------------------------------------------
-# PUBLIC METHODS - INPUT
-# ---------------------------------------------------------
-## Returns a Vector2 based on action inputs, applying dead zone and normalization.[br]
-## [code]var dir = manager.get_vector("left","right","up","down",0.1)[/code][br][br]
-func get_vector(negative_x: StringName, positive_x: StringName, negative_y: StringName, positive_y: StringName, dead_zone: float = 0.0) -> Vector2:
-	if not _input_enabled_internal:
-		return Vector2.ZERO
-
-	var x := 0.0
-	var y := 0.0
-
-	if not _is_action_blocked(negative_x):
-		x -= Input.get_action_raw_strength(negative_x)
-	if not _is_action_blocked(positive_x):
-		x += Input.get_action_raw_strength(positive_x)
-	if not _is_action_blocked(negative_y):
-		y -= Input.get_action_raw_strength(negative_y)
-	if not _is_action_blocked(positive_y):
-		y += Input.get_action_raw_strength(positive_y)
-
-	var vec := Vector2(x, y)
-	if vec.length() < dead_zone:
-		vec = Vector2.ZERO
-	else:
-		vec = vec.normalized() * ((vec.length() - dead_zone) / (1.0 - dead_zone))
-
-	return vec
-
-
-## Returns true if an action was just released (similar to Input.is_action_just_released). Applies blocking.[br]
-## [code]if manager.is_action_just_released("jump"):[/code][br][br]
-func is_action_just_released(action: StringName, exact_match: bool = false) -> bool:
-	if not _input_enabled_internal:
-		return false
-
-	if _is_action_blocked(action):
-		return false
-	return Input.is_action_just_released(action, exact_match)
-
-
-## Returns a float axis value (-1 to 1) based on negative/positive actions, applying dead zone.[br]
-## [code]var x_axis = manager.get_axis("left","right")[/code][br][br]
-func get_axis(negative_action: StringName, positive_action: StringName, dead_zone: float = 0.15) -> float:
-	if not _input_enabled_internal:
-		return 0.0
-
-	var value := 0.0
-
-	if not _is_action_blocked(negative_action):
-		value -= Input.get_action_raw_strength(negative_action)
-	if not _is_action_blocked(positive_action):
-		value += Input.get_action_raw_strength(positive_action)
-
-	if abs(value) < dead_zone:
-		return 0.0
-
-	return clamp(value, -1.0, 1.0)
-
-
-# ---------------------------------------------------------
-# PRIVATE METHODS
-# ---------------------------------------------------------
-func _is_action_blocked(action: StringName) -> bool:
-	if blocked_actions.get(action, false):
-		return true
-
-	for group in blocked_groups.keys():
-		if blocked_groups[group] != true:
-			continue
-		var actions = action_groups.get(group)
-		if actions and action in actions:
-			return true
-
-	return false
-
-
-func _build_input_cache() -> void:
-	_keycode_to_actions.clear()
-	_mouse_button_to_actions.clear()
-	_joy_button_to_actions.clear()
-
-	for action in InputMap.get_actions():
-		for ev in InputMap.action_get_events(action):
-			if ev is InputEventKey:
-				var keycode = ev.keycode
-				if not _keycode_to_actions.has(keycode):
-					_keycode_to_actions[keycode] = []
-				_keycode_to_actions[keycode].append(action)
-
-			elif ev is InputEventMouseButton:
-				var btn = ev.button_index
-				if not _mouse_button_to_actions.has(btn):
-					_mouse_button_to_actions[btn] = []
-				_mouse_button_to_actions[btn].append(action)
-
-			elif ev is InputEventJoypadButton:
-				var btn = ev.button_index
-				if not _joy_button_to_actions.has(btn):
-					_joy_button_to_actions[btn] = []
-				_joy_button_to_actions[btn].append(action)
-
-
-func _sync_actions_from_input() -> void:
-	for action in InputMap.get_actions():
-		if _is_action_blocked(action):
-			continue
-
-		var pressed := Input.is_action_pressed(action)
-		var was_pressed = _actions_pressed.get(action, false)
-
-		if pressed and not was_pressed:
-			_press_action(action)
-		elif not pressed and was_pressed:
-			_release_action(action)
-
-
-func _press_action(action: StringName) -> void:
-	var now := Time.get_ticks_msec() / 1000.0
-
-	if _actions_last_tap_time.has(action):
-		if now - _actions_last_tap_time[action] <= default_double_tap_time:
-			_actions_double_tap[action] = true
-
-	_actions_last_tap_time[action] = now
-
-	if not _actions_pressed.get(action, false):
-		_actions_oneshot[action] = true
-		_actions_toggle[action] = not _actions_toggle.get(action, false)
-
-	_actions_pressed[action] = true
-	_actions_press_time[action] = 0.0
-	_actions_long_press[action] = false
-	_actions_long_press_triggered[action] = false
-	_actions_long_press_hold[action] = false
-	_actions_repeat[action] = false
-	_actions_repeat_timer[action] = 0.0
-
-
-func _release_action(action: StringName) -> void:
-	_actions_pressed[action] = false
-	_actions_press_time[action] = 0.0
-	_actions_long_press[action] = false
-	_actions_long_press_triggered[action] = false
-	_actions_long_press_hold[action] = false
-	_actions_double_tap[action] = false
-	_actions_repeat[action] = false
-	_actions_repeat_timer[action] = 0.0
+func get_action_data(key: StringName) -> ActionManagerData:
+	var action_data: ActionManagerData = actions.get(key)
+	if not action_data:
+		push_warning("Acton %s not found." % key)
+	return action_data
