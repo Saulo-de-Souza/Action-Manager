@@ -270,12 +270,46 @@ func reset_all(reset_actions_repeat_config: bool = false) -> void:
 # ---------------------------------------------------------
 # PUBLIC METHODS - INPUT
 # ---------------------------------------------------------
-func get_vector(negative_x: StringName, positive_x: StringName, negative_y: StringName, positive_y: StringName, dead_zone: float) -> Vector2:
-	return Input.get_vector(negative_x, positive_x, negative_y, positive_y, dead_zone)
-	
+func get_vector(negative_x: StringName, positive_x: StringName, negative_y: StringName, positive_y: StringName, dead_zone: float = 0.0) -> Vector2:
+	var x := 0.0
+	var y := 0.0
+
+	if not _is_action_blocked(negative_x):
+		x -= Input.get_action_raw_strength(negative_x)
+	if not _is_action_blocked(positive_x):
+		x += Input.get_action_raw_strength(positive_x)
+	if not _is_action_blocked(negative_y):
+		y -= Input.get_action_raw_strength(negative_y)
+	if not _is_action_blocked(positive_y):
+		y += Input.get_action_raw_strength(positive_y)
+
+	var vec := Vector2(x, y)
+	if vec.length() < dead_zone:
+		vec = Vector2.ZERO
+	else:
+		vec = vec.normalized() * ((vec.length() - dead_zone) / (1.0 - dead_zone))
+		
+	return vec
+
 
 func is_action_just_released(action: StringName, exact_match: bool = false) -> float:
+	if _is_action_blocked(action):
+		return false
 	return Input.is_action_just_released(action, exact_match)
+
+
+func get_axis(negative_action: StringName, positive_action: StringName, dead_zone: float = 0.15) -> float:
+	var value := 0.0
+
+	if not _is_action_blocked(negative_action):
+		value -= Input.get_action_raw_strength(negative_action)
+	if not _is_action_blocked(positive_action):
+		value += Input.get_action_raw_strength(positive_action)
+
+	if abs(value) < dead_zone:
+		return 0.0
+
+	return clamp(value, -1.0, 1.0)
 
 
 # ---------------------------------------------------------
