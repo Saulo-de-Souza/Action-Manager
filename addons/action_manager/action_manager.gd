@@ -1,6 +1,8 @@
 @icon("./icon.svg")
 
-## [b]ActionManager[/b] is an advanced input manager for Godot 4.5 that provides a unified API for reliable input handling and full state control. It supports long press, double tap, toggle, oneshot actions, configurable input repetition, action/group blocking, and manual input injection. It emits signals for mouse, keyboard, and gamepad events, making input handling consistent across devices.[br][br]
+## [b]ActionManager[/b] is an advanced input manager for Godot 4.5 that provides a unified API for reliable input handling and full state control.[br][br]
+## It supports long press, double tap, toggle, oneshot actions, configurable input repetition, action/group blocking, and manual input injection.[br]
+## It emits signals for mouse, keyboard, and gamepad events, making input handling consistent across devices.
 class_name ActionManager extends Node
 
 
@@ -30,16 +32,16 @@ signal joy_motion_event(event: InputEventJoypadMotion)
 # PUBLIC PROPERTIES
 # ---------------------------------------------------------
 ## Time threshold (in seconds) to detect a long press.[br][br]
-var long_press_time := 0.5
+@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_long_press_time := 0.5
 
 ## Maximum time (in seconds) between taps to detect a double tap.[br][br]
-var double_tap_time := 0.25
+@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_double_tap_time := 0.25
 
 ## Delay (in seconds) before action repetition starts.[br][br]
-var repeat_delay := 0.8
+@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_repeat_delay := 0.8
 
 ## Interval (in seconds) between repeated action signals after the initial delay.[br][br]
-var repeat_interval := 0.8
+@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_repeat_interval := 0.8
 
 
 # ---------------------------------------------------------
@@ -100,7 +102,7 @@ func _process(delta: float) -> void:
 
 		_actions_press_time[action] += delta
 
-		if (_actions_press_time[action] >= long_press_time and not _actions_long_press_triggered.get(action, false) and not _is_action_blocked(action)):
+		if (_actions_press_time[action] >= default_long_press_time and not _actions_long_press_triggered.get(action, false) and not _is_action_blocked(action)):
 			_actions_long_press[action] = true
 			_actions_long_press_triggered[action] = true
 			_actions_long_press_hold[action] = true
@@ -110,13 +112,13 @@ func _process(delta: float) -> void:
 
 		_actions_repeat_timer[action] = _actions_repeat_timer.get(action, 0.0) + delta
 
-		var delay := repeat_delay
-		var interval := repeat_interval
+		var delay := default_repeat_delay
+		var interval := default_repeat_interval
 
 		if _actions_repeat_config.has(action):
 			var cfg = _actions_repeat_config[action]
-			delay = cfg.get("delay", repeat_delay)
-			interval = cfg.get("interval", repeat_interval)
+			delay = cfg.get("delay", default_repeat_delay)
+			interval = cfg.get("interval", default_repeat_interval)
 
 		if _actions_repeat_timer[action] < delay:
 			continue
@@ -425,7 +427,7 @@ func _press_action(action: StringName) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 
 	if _actions_last_tap_time.has(action):
-		if now - _actions_last_tap_time[action] <= double_tap_time:
+		if now - _actions_last_tap_time[action] <= default_double_tap_time:
 			_actions_double_tap[action] = true
 
 	_actions_last_tap_time[action] = now
