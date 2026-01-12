@@ -167,7 +167,7 @@ func _process(delta: float) -> void:
 		return
 
 	_sync_actions_from_input()
-	
+
 	for action in _actions_pressed:
 		if not _actions_pressed[action]:
 			continue
@@ -412,7 +412,7 @@ func get_vector(negative_x: StringName, positive_x: StringName, negative_y: Stri
 		vec = Vector2.ZERO
 	else:
 		vec = vec.normalized() * ((vec.length() - dead_zone) / (1.0 - dead_zone))
-		
+
 	return vec
 
 
