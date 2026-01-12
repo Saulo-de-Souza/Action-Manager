@@ -1,6 +1,6 @@
 # ActionManager - Godot 4.5 Advanced Input Manager
 
-@icon("./icon.svg")
+![icon](screenshots/icon_400.png)
 
 ## Overview
 
