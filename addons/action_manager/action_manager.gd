@@ -31,6 +31,13 @@ signal joy_motion_event(event: InputEventJoypadMotion)
 # ---------------------------------------------------------
 # EXPORTS
 # ---------------------------------------------------------
+## [b]Enables or disables all input handling.[/b][br][br]
+## When disabled, all actions are reset and input events are ignored.[br]
+## Example usage:[br]
+## [code]action_manager.input_enabled = false[/code]
+@export var input_enabled: bool = true: set = set_input_enabled, get = get_input_enabled
+
+
 @export_category("Default")
 @export_group("Default Times", "default_")
 
@@ -134,7 +141,7 @@ var _actions_long_press_hold: Dictionary[StringName, bool] = {}
 var _actions_repeat_timer: Dictionary[StringName, float] = {}
 var _actions_repeat: Dictionary[StringName, bool] = {}
 var _actions_repeat_config: Dictionary = {}
-var _input_enabled: bool = true
+var _input_enabled_internal: bool = true
 var _keycode_to_actions := {}
 var _mouse_button_to_actions := {}
 var _joy_button_to_actions := {}
@@ -163,7 +170,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	if not _input_enabled:
+	if not _input_enabled_internal:
 		return
 
 	_sync_actions_from_input()
@@ -207,7 +214,7 @@ func _process(delta: float) -> void:
 ## Injects an input action manually.[br]
 ## [code]manager.inject_action("jump", true)[/code][br][br]
 func inject_action(action: StringName, pressed: bool) -> void:
-	if not _input_enabled or _is_action_blocked(action):
+	if not _input_enabled_internal or _is_action_blocked(action):
 		return
 
 	if pressed:
@@ -309,9 +316,15 @@ func get_action_repeat(action: StringName) -> bool:
 ## Enables or disables all input handling. Disables will reset all action states.[br]
 ## [code]manager.set_input_enabled(false)[/code][br][br]
 func set_input_enabled(enabled: bool) -> void:
-	_input_enabled = enabled
+	_input_enabled_internal = enabled
 	if not enabled:
 		reset_all()
+
+
+## Returns the current input enabled state.[br]
+## [code]if manager.get_input_enabled():[/code][br][br]
+func get_input_enabled() -> bool:
+	return _input_enabled_internal
 
 
 ## Blocks a specific action, preventing it from updating until unblocked.[br]
@@ -395,6 +408,9 @@ func reset_all(reset_actions_repeat_config: bool = false) -> void:
 ## Returns a Vector2 based on action inputs, applying dead zone and normalization.[br]
 ## [code]var dir = manager.get_vector("left","right","up","down",0.1)[/code][br][br]
 func get_vector(negative_x: StringName, positive_x: StringName, negative_y: StringName, positive_y: StringName, dead_zone: float = 0.0) -> Vector2:
+	if not _input_enabled_internal:
+		return Vector2.ZERO
+
 	var x := 0.0
 	var y := 0.0
 
@@ -418,7 +434,10 @@ func get_vector(negative_x: StringName, positive_x: StringName, negative_y: Stri
 
 ## Returns true if an action was just released (similar to Input.is_action_just_released). Applies blocking.[br]
 ## [code]if manager.is_action_just_released("jump"):[/code][br][br]
-func is_action_just_released(action: StringName, exact_match: bool = false) -> float:
+func is_action_just_released(action: StringName, exact_match: bool = false) -> bool:
+	if not _input_enabled_internal:
+		return false
+
 	if _is_action_blocked(action):
 		return false
 	return Input.is_action_just_released(action, exact_match)
@@ -427,6 +446,9 @@ func is_action_just_released(action: StringName, exact_match: bool = false) -> f
 ## Returns a float axis value (-1 to 1) based on negative/positive actions, applying dead zone.[br]
 ## [code]var x_axis = manager.get_axis("left","right")[/code][br][br]
 func get_axis(negative_action: StringName, positive_action: StringName, dead_zone: float = 0.15) -> float:
+	if not _input_enabled_internal:
+		return 0.0
+
 	var value := 0.0
 
 	if not _is_action_blocked(negative_action):
