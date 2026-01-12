@@ -167,4 +167,8 @@ if action_manager.get_action_repeat("shoot"):
 
 ---
 
+!["screenshot 1](screenshots/1.png)
+
+---
+
 ActionManager provides a **robust, unified input API** for complex games, handling both simple presses and advanced actions like repeat, long press, and double tap.
