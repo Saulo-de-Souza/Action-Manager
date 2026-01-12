@@ -29,19 +29,102 @@ signal joy_motion_event(event: InputEventJoypadMotion)
 
 
 # ---------------------------------------------------------
-# PUBLIC PROPERTIES
+# EXPORTS
 # ---------------------------------------------------------
-## Time threshold (in seconds) to detect a long press.[br][br]
+@export_category("Default")
+@export_group("Default Times", "default_")
+
+## [b]Time threshold (in seconds) to detect a long press.[/b][br][br]
+## This value is the default for all actions, used as an example. You can modify it per action or delete it entirely.[br]
+## Example usage in code:[br]
+## [code]
+## action_manager.default_long_press_time = 0.6
+## [/code]
 @export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_long_press_time := 0.5
 
-## Maximum time (in seconds) between taps to detect a double tap.[br][br]
+
+## [b]Maximum time (in seconds) between taps to detect a double tap.[/b][br][br]
+## Default value for all actions. Can be overwritten per action.[br]
+## Example usage:[br]
+## [code]
+## action_manager.default_double_tap_time = 0.3
+## [/code]
 @export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_double_tap_time := 0.25
 
-## Delay (in seconds) before action repetition starts.[br][br]
+
+## [b]Delay (in seconds) before action repetition starts.[/b][br][br]
+## Default repeat delay for actions. Adjust individually if needed.[br]
+## Example usage:[br]
+## [code]
+## action_manager.default_repeat_delay = 0.4
+## [/code]
 @export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_repeat_delay := 0.2
 
-## Interval (in seconds) between repeated action signals after the initial delay.[br][br]
+
+## [b]Interval (in seconds) between repeated action signals after the initial delay.[/b][br][br]
+## Default repeat interval. Can be customized per action.[br]
+## Example usage:[br]
+## [code]
+## action_manager.default_repeat_interval = 0.3
+## [/code]
 @export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_repeat_interval := 0.2
+
+
+@export_category("Blocked Actions")
+@export_group("Groups")
+
+## [b]Action groups dictionary.[/b][br][br]
+## Keys are group names, values are arrays of action names.[br]
+## You can modify, add, or remove groups as needed.[br][br]
+## Examples:[br]
+## [code]
+## # Adding a new group
+## action_manager._action_groups["Combat"] = ["attack", "block", "dodge"]
+##
+## # Overwriting an existing group
+## action_manager._action_groups["Pause"] = ["ui_up", "ui_down", "ui_accept"]
+##
+## # Removing a group
+## action_manager._action_groups.erase("RadialMenu")
+## [/code]
+@export var action_groups: Dictionary[StringName, Array] = {"Pause": ["ui_left", "ui_right", "ui_up", "ui_down", "ui_accept"], "RadialMenu": ["ui_accept"]}
+
+@export_group("Block Groups")
+
+## [b]Blocked groups dictionary.[/b][br][br]
+## Keys are group names, values are boolean. True = blocked, False = active.[br]
+## Works only if the group exists in [_action_groups].[br][br]
+## Examples:[br]
+## [code]
+## # Block the "Pause" group
+## action_manager._blocked_groups["Pause"] = true
+##
+## # Unblock the "RadialMenu" group
+## action_manager._blocked_groups["RadialMenu"] = false
+##
+## # Add and block a new group
+## action_manager._action_groups["Combat"] = ["attack", "block", "dodge"]
+## action_manager._blocked_groups["Combat"] = true
+## [/code]
+@export var blocked_groups: Dictionary[StringName, bool] = {"Pause": false, "RadialMenu": false}
+
+@export_group("Block Actions")
+
+## [b]Blocked actions dictionary.[/b][br][br]
+## Keys are action names, values are boolean. True = blocked, False = active.[br]
+## Can be modified at runtime or in the inspector.[br][br]
+## Examples:[br]
+## [code]
+## # Block a single action
+## action_manager._blocked_actions["ui_menu"] = true
+##
+## # Unblock a single action
+## action_manager._blocked_actions["ui_menu"] = false
+##
+## # Add and block a new action
+## action_manager._blocked_actions["attack"] = true
+## [/code]
+@export var blocked_actions: Dictionary[StringName, bool] = {"ui_menu": false}
 
 
 # ---------------------------------------------------------
@@ -60,9 +143,6 @@ var _actions_repeat_timer: Dictionary[StringName, float] = {}
 var _actions_repeat: Dictionary[StringName, bool] = {}
 var _actions_repeat_config: Dictionary = {}
 var _input_enabled: bool = true
-var _blocked_actions: Dictionary[StringName, bool] = {}
-var _action_groups: Dictionary = {}
-var _blocked_groups: Dictionary[StringName, bool] = {}
 var _keycode_to_actions := {}
 var _mouse_button_to_actions := {}
 var _joy_button_to_actions := {}
@@ -245,35 +325,35 @@ func set_input_enabled(enabled: bool) -> void:
 ## Blocks a specific action, preventing it from updating until unblocked.[br]
 ## [code]manager.block_action("shoot")[/code][br][br]
 func block_action(action: StringName) -> void:
-	_blocked_actions[action] = true
+	blocked_actions[action] = true
 	reset_action(action)
 
 
 ## Unblocks a previously blocked action.[br]
 ## [code]manager.unblock_action("shoot")[/code][br][br]
 func unblock_action(action: StringName) -> void:
-	_blocked_actions.erase(action)
+	blocked_actions.erase(action)
 
 
 ## Registers a group of actions for easier blocking/unblocking by group.[br]
 ## [code]manager.register_action_group("movement", ["move_left","move_right","jump"])[/code][br][br]
 func register_action_group(group: StringName, actions: Array[StringName]) -> void:
-	_action_groups[group] = actions
+	action_groups[group] = actions
 
 
 ## Blocks an entire action group.[br]
 ## [code]manager.block_group("movement")[/code][br][br]
 func block_group(group: StringName) -> void:
-	_blocked_groups[group] = true
+	blocked_groups[group] = true
 
-	for action in _action_groups.get(group, []):
+	for action in action_groups.get(group, []):
 		reset_action(action)
 
 
 ## Unblocks an entire action group.[br]
 ## [code]manager.unblock_group("movement")[/code][br][br]
 func unblock_group(group: StringName) -> void:
-	_blocked_groups.erase(group)
+	blocked_groups.erase(group)
 
 
 ## Clears any custom repeat settings for an action.[br]
@@ -372,13 +452,13 @@ func get_axis(negative_action: StringName, positive_action: StringName, dead_zon
 # PRIVATE METHODS
 # ---------------------------------------------------------
 func _is_action_blocked(action: StringName) -> bool:
-	if _blocked_actions.get(action, false):
+	if blocked_actions.get(action, false):
 		return true
 
-	for group in _blocked_groups.keys():
-		if _blocked_groups[group] != true:
+	for group in blocked_groups.keys():
+		if blocked_groups[group] != true:
 			continue
-		var actions = _action_groups.get(group)
+		var actions = action_groups.get(group)
 		if actions and action in actions:
 			return true
 
