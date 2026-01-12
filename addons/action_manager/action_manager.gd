@@ -38,10 +38,10 @@ signal joy_motion_event(event: InputEventJoypadMotion)
 @export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_double_tap_time := 0.25
 
 ## Delay (in seconds) before action repetition starts.[br][br]
-@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_repeat_delay := 0.8
+@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_repeat_delay := 0.2
 
 ## Interval (in seconds) between repeated action signals after the initial delay.[br][br]
-@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_repeat_interval := 0.8
+@export_range(0.0, 1.0, 0.0001, "or_greater", "suffix:s") var default_repeat_interval := 0.2
 
 
 # ---------------------------------------------------------
