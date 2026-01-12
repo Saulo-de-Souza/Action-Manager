@@ -1,35 +1,39 @@
 @icon("./icon.svg")
 
-## [b]Action Manager[/b] is an advanced input manager for Godot 4.5 that provides:[br][br]
-## - Long press and long press hold[br]
-## - Double tap[br]
-## - Action toggle and oneshot[br]
-## - Configurable input repetition[br]
-## - Action or group blocking[br]
-## - Manual input injection (UI, touch, replay, AI)[br]
-## - Signals for mouse, keyboard, and gamepad events[br][br]
-## It offers a unified API for reliable input handling with full state control.
+## 
 class_name ActionManager extends Node
 
 
 # ---------------------------------------------------------
 # SIGNALS
 # ---------------------------------------------------------
+## 
 signal all_event(event: InputEvent)
+## 
 signal mouse_motion_event(event: InputEventMouseMotion)
+## 
 signal mouse_button_event(event: InputEventMouseButton)
+## 
 signal key_event(event: InputEventKey)
+## 
 signal joy_button_event(event: InputEventJoypadButton)
+## 
 signal joy_motion_event(event: InputEventJoypadMotion)
+## 
 
 
 # ---------------------------------------------------------
 # PUBLIC PROPERTIES
 # ---------------------------------------------------------
+## 
 var long_press_time := 0.5
+## 
 var double_tap_time := 0.25
+## 
 var repeat_delay := 0.8
+## 
 var repeat_interval := 0.8
+## 
 
 
 # ---------------------------------------------------------
@@ -120,6 +124,7 @@ func _process(delta: float) -> void:
 # ---------------------------------------------------------
 # PUBLIC METHODS
 # ---------------------------------------------------------
+## 
 func inject_action(action: StringName, pressed: bool) -> void:
 	if not _input_enabled or _is_action_blocked(action):
 		return
@@ -130,6 +135,7 @@ func inject_action(action: StringName, pressed: bool) -> void:
 		_release_action(action)
 
 
+## 
 func set_action_repeat(action: StringName, delay: float, interval: float) -> void:
 	_actions_repeat_config[action] = {
 		"delay": delay,
@@ -137,14 +143,17 @@ func set_action_repeat(action: StringName, delay: float, interval: float) -> voi
 	}
 
 
+## 
 func get_action_pressed(action: StringName) -> bool:
 	return _actions_pressed.get(action, false) and not _is_action_blocked(action)
 
 
+## 
 func get_action_hold(action: StringName) -> bool:
 	return get_action_pressed(action)
 
 
+## 
 func get_action_oneshot(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
@@ -155,12 +164,14 @@ func get_action_oneshot(action: StringName) -> bool:
 	return false
 
 
+## 
 func get_action_toggle(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
 	return _actions_toggle.get(action, false)
 
 
+## 
 func get_action_long_press(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
@@ -171,6 +182,7 @@ func get_action_long_press(action: StringName) -> bool:
 	return false
 
 
+## 
 func get_action_double_tap(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
@@ -181,6 +193,7 @@ func get_action_double_tap(action: StringName) -> bool:
 	return false
 
 
+## 
 func get_action_long_press_hold(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
@@ -191,6 +204,7 @@ func get_action_long_press_hold(action: StringName) -> bool:
 	)
 
 
+## 
 func get_action_repeat(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
@@ -202,25 +216,30 @@ func get_action_repeat(action: StringName) -> bool:
 	return false
 
 
+## 
 func set_input_enabled(enabled: bool) -> void:
 	_input_enabled = enabled
 	if not enabled:
 		reset_all()
 
 
+## 
 func block_action(action: StringName) -> void:
 	_blocked_actions[action] = true
 	reset_action(action)
 
 
+## 
 func unblock_action(action: StringName) -> void:
 	_blocked_actions.erase(action)
 
 
+## 
 func register_action_group(group: StringName, actions: Array[StringName]) -> void:
 	_action_groups[group] = actions
 
 
+## 
 func block_group(group: StringName) -> void:
 	_blocked_groups[group] = true
 
@@ -228,14 +247,17 @@ func block_group(group: StringName) -> void:
 		reset_action(action)
 
 
+## 
 func unblock_group(group: StringName) -> void:
 	_blocked_groups.erase(group)
 
 
+## 
 func clear_action_repeat(action: StringName) -> void:
 	_actions_repeat_config.erase(action)
 
 
+## 
 func reset_action(action: StringName) -> void:
 	_actions_pressed[action] = false
 	_actions_oneshot[action] = false
@@ -250,6 +272,7 @@ func reset_action(action: StringName) -> void:
 	_actions_repeat_timer[action] = 0.0
 
 
+## 
 func reset_all(reset_actions_repeat_config: bool = false) -> void:
 	_actions_pressed.clear()
 	_actions_oneshot.clear()
@@ -270,6 +293,7 @@ func reset_all(reset_actions_repeat_config: bool = false) -> void:
 # ---------------------------------------------------------
 # PUBLIC METHODS - INPUT
 # ---------------------------------------------------------
+## 
 func get_vector(negative_x: StringName, positive_x: StringName, negative_y: StringName, positive_y: StringName, dead_zone: float = 0.0) -> Vector2:
 	var x := 0.0
 	var y := 0.0
@@ -292,12 +316,14 @@ func get_vector(negative_x: StringName, positive_x: StringName, negative_y: Stri
 	return vec
 
 
+## 
 func is_action_just_released(action: StringName, exact_match: bool = false) -> float:
 	if _is_action_blocked(action):
 		return false
 	return Input.is_action_just_released(action, exact_match)
 
 
+## 
 func get_axis(negative_action: StringName, positive_action: StringName, dead_zone: float = 0.15) -> float:
 	var value := 0.0
 
