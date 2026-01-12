@@ -1,39 +1,45 @@
 @icon("./icon.svg")
 
-## 
+## [b]ActionManager[/b] is an advanced input manager for Godot 4.5 that provides a unified API for reliable input handling and full state control. It supports long press, double tap, toggle, oneshot actions, configurable input repetition, action/group blocking, and manual input injection. It emits signals for mouse, keyboard, and gamepad events, making input handling consistent across devices.[br][br]
 class_name ActionManager extends Node
 
 
 # ---------------------------------------------------------
 # SIGNALS
 # ---------------------------------------------------------
-## 
+## Emitted for every input event received by the manager.[br][br]
 signal all_event(event: InputEvent)
-## 
+
+## Emitted when a mouse motion event is detected.[br][br]
 signal mouse_motion_event(event: InputEventMouseMotion)
-## 
+
+## Emitted when a mouse button event is detected.[br][br]
 signal mouse_button_event(event: InputEventMouseButton)
-## 
+
+## Emitted when a keyboard key event is detected.[br][br]
 signal key_event(event: InputEventKey)
-## 
+
+## Emitted when a gamepad button event is detected.[br][br]
 signal joy_button_event(event: InputEventJoypadButton)
-## 
+
+## Emitted when a gamepad motion (analog) event is detected.[br][br]
 signal joy_motion_event(event: InputEventJoypadMotion)
-## 
 
 
 # ---------------------------------------------------------
 # PUBLIC PROPERTIES
 # ---------------------------------------------------------
-## 
+## Time threshold (in seconds) to detect a long press.[br][br]
 var long_press_time := 0.5
-## 
+
+## Maximum time (in seconds) between taps to detect a double tap.[br][br]
 var double_tap_time := 0.25
-## 
+
+## Delay (in seconds) before action repetition starts.[br][br]
 var repeat_delay := 0.8
-## 
+
+## Interval (in seconds) between repeated action signals after the initial delay.[br][br]
 var repeat_interval := 0.8
-## 
 
 
 # ---------------------------------------------------------
@@ -124,7 +130,8 @@ func _process(delta: float) -> void:
 # ---------------------------------------------------------
 # PUBLIC METHODS
 # ---------------------------------------------------------
-## 
+## Injects an input action manually.[br]
+## [code]manager.inject_action("jump", true)[/code][br][br]
 func inject_action(action: StringName, pressed: bool) -> void:
 	if not _input_enabled or _is_action_blocked(action):
 		return
@@ -135,7 +142,8 @@ func inject_action(action: StringName, pressed: bool) -> void:
 		_release_action(action)
 
 
-## 
+## Sets custom delay and interval for repeated action signals.[br]
+## [code]manager.set_action_repeat("shoot", 0.5, 0.1)[/code][br][br]
 func set_action_repeat(action: StringName, delay: float, interval: float) -> void:
 	_actions_repeat_config[action] = {
 		"delay": delay,
@@ -143,17 +151,20 @@ func set_action_repeat(action: StringName, delay: float, interval: float) -> voi
 	}
 
 
-## 
+## Returns true if the action is currently pressed.[br]
+## [code]if manager.get_action_pressed("move_right"):[/code][br][br]
 func get_action_pressed(action: StringName) -> bool:
 	return _actions_pressed.get(action, false) and not _is_action_blocked(action)
 
 
-## 
+## Returns true while the action is being held down.[br]
+## [code]if manager.get_action_hold("run"):[/code][br][br]
 func get_action_hold(action: StringName) -> bool:
 	return get_action_pressed(action)
 
 
-## 
+## Returns true only once when the action is pressed (oneshot). Resets automatically.[br]
+## [code]if manager.get_action_oneshot("jump"):[/code][br][br]
 func get_action_oneshot(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
@@ -164,14 +175,16 @@ func get_action_oneshot(action: StringName) -> bool:
 	return false
 
 
-## 
+## Returns the toggle state of the action (changes each press).[br]
+## [code]var active = manager.get_action_toggle("switch_weapon")[/code][br][br]
 func get_action_toggle(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
 	return _actions_toggle.get(action, false)
 
 
-## 
+## Returns true if a long press is detected and resets the long press state.[br]
+## [code]if manager.get_action_long_press("charge"):[/code][br][br]
 func get_action_long_press(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
@@ -182,7 +195,8 @@ func get_action_long_press(action: StringName) -> bool:
 	return false
 
 
-## 
+## Returns true if a double tap is detected and resets the state.[br]
+## [code]if manager.get_action_double_tap("dash"):[/code][br][br]
 func get_action_double_tap(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
@@ -193,7 +207,8 @@ func get_action_double_tap(action: StringName) -> bool:
 	return false
 
 
-## 
+## Returns true while holding a long press.[br]
+## [code]if manager.get_action_long_press_hold("charge"):[/code][br][br]
 func get_action_long_press_hold(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
@@ -204,7 +219,8 @@ func get_action_long_press_hold(action: StringName) -> bool:
 	)
 
 
-## 
+## Returns true if a repeated action is triggered (after delay and interval). Resets automatically.[br]
+## [code]if manager.get_action_repeat("shoot"):[/code][br][br]
 func get_action_repeat(action: StringName) -> bool:
 	if _is_action_blocked(action):
 		return false
@@ -216,30 +232,35 @@ func get_action_repeat(action: StringName) -> bool:
 	return false
 
 
-## 
+## Enables or disables all input handling. Disables will reset all action states.[br]
+## [code]manager.set_input_enabled(false)[/code][br][br]
 func set_input_enabled(enabled: bool) -> void:
 	_input_enabled = enabled
 	if not enabled:
 		reset_all()
 
 
-## 
+## Blocks a specific action, preventing it from updating until unblocked.[br]
+## [code]manager.block_action("shoot")[/code][br][br]
 func block_action(action: StringName) -> void:
 	_blocked_actions[action] = true
 	reset_action(action)
 
 
-## 
+## Unblocks a previously blocked action.[br]
+## [code]manager.unblock_action("shoot")[/code][br][br]
 func unblock_action(action: StringName) -> void:
 	_blocked_actions.erase(action)
 
 
-## 
+## Registers a group of actions for easier blocking/unblocking by group.[br]
+## [code]manager.register_action_group("movement", ["move_left","move_right","jump"])[/code][br][br]
 func register_action_group(group: StringName, actions: Array[StringName]) -> void:
 	_action_groups[group] = actions
 
 
-## 
+## Blocks an entire action group.[br]
+## [code]manager.block_group("movement")[/code][br][br]
 func block_group(group: StringName) -> void:
 	_blocked_groups[group] = true
 
@@ -247,17 +268,20 @@ func block_group(group: StringName) -> void:
 		reset_action(action)
 
 
-## 
+## Unblocks an entire action group.[br]
+## [code]manager.unblock_group("movement")[/code][br][br]
 func unblock_group(group: StringName) -> void:
 	_blocked_groups.erase(group)
 
 
-## 
+## Clears any custom repeat settings for an action.[br]
+## [code]manager.clear_action_repeat("shoot")[/code][br][br]
 func clear_action_repeat(action: StringName) -> void:
 	_actions_repeat_config.erase(action)
 
 
-## 
+## Resets a specific action's state completely.[br]
+## [code]manager.reset_action("jump")[/code][br][br]
 func reset_action(action: StringName) -> void:
 	_actions_pressed[action] = false
 	_actions_oneshot[action] = false
@@ -272,7 +296,8 @@ func reset_action(action: StringName) -> void:
 	_actions_repeat_timer[action] = 0.0
 
 
-## 
+## Resets all actions and optionally clears repeat configurations.[br]
+## [code]manager.reset_all(true)[/code][br][br]
 func reset_all(reset_actions_repeat_config: bool = false) -> void:
 	_actions_pressed.clear()
 	_actions_oneshot.clear()
@@ -293,7 +318,8 @@ func reset_all(reset_actions_repeat_config: bool = false) -> void:
 # ---------------------------------------------------------
 # PUBLIC METHODS - INPUT
 # ---------------------------------------------------------
-## 
+## Returns a Vector2 based on action inputs, applying dead zone and normalization.[br]
+## [code]var dir = manager.get_vector("left","right","up","down",0.1)[/code][br][br]
 func get_vector(negative_x: StringName, positive_x: StringName, negative_y: StringName, positive_y: StringName, dead_zone: float = 0.0) -> Vector2:
 	var x := 0.0
 	var y := 0.0
@@ -316,14 +342,16 @@ func get_vector(negative_x: StringName, positive_x: StringName, negative_y: Stri
 	return vec
 
 
-## 
+## Returns true if an action was just released (similar to Input.is_action_just_released). Applies blocking.[br]
+## [code]if manager.is_action_just_released("jump"):[/code][br][br]
 func is_action_just_released(action: StringName, exact_match: bool = false) -> float:
 	if _is_action_blocked(action):
 		return false
 	return Input.is_action_just_released(action, exact_match)
 
 
-## 
+## Returns a float axis value (-1 to 1) based on negative/positive actions, applying dead zone.[br]
+## [code]var x_axis = manager.get_axis("left","right")[/code][br][br]
 func get_axis(negative_action: StringName, positive_action: StringName, dead_zone: float = 0.15) -> float:
 	var value := 0.0
 
