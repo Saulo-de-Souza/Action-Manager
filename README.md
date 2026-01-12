@@ -1,6 +1,6 @@
-# InputManager2
+# Action Manager
 
-`InputManager2` is an advanced input manager for Godot 4.5 that provides:
+`Action Manager` is an advanced input manager for Godot 4.5 that provides:
 
 - Long press and long press hold
 - Double tap
