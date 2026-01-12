@@ -375,7 +375,9 @@ func _is_action_blocked(action: StringName) -> bool:
 	if _blocked_actions.get(action, false):
 		return true
 
-	for group in _blocked_groups:
+	for group in _blocked_groups.keys():
+		if _blocked_groups[group] != true:
+			continue
 		var actions = _action_groups.get(group)
 		if actions and action in actions:
 			return true
