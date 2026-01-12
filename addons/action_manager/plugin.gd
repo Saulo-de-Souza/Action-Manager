@@ -2,8 +2,8 @@
 extends EditorPlugin
 
 
-var icon = preload("./icon.svg")
-var main_script = preload("./action_manager.gd")
+var icon = preload("res://addons/action_manager/icon.svg")
+var main_script = preload("res://addons/action_manager/action_manager.gd")
 
 
 func _enable_plugin() -> void:
