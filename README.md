@@ -139,22 +139,7 @@ action_manager.reset_all(true)  # also clears repeat config
 
 ---
 
-## Example: Movement
-
-```gdscript
-var velocity := Vector2.ZERO
-velocity = action_manager.get_vector("left", "right", "up", "down", 0.2)
-move_character(velocity)
-```
-
-## Example: Shooting with Repeat
-
-```gdscript
-if action_manager.get_action_repeat("shoot"):
-    fire_bullet()
-```
-
----
+## Screenshots
 
 !["screenshot 1](screenshots/1.png)
 
