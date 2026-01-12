@@ -1,3 +1,5 @@
+* text=auto eol=lf
+
 /assets export-ignore
 /screenshots export-ignore
 .gitattributes export-ignore
