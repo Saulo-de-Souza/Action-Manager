@@ -1,6 +1,10 @@
-# Action Manager
+# ActionManager - Godot 4.5 Advanced Input Manager
 
-`Action Manager` is an advanced input manager for Godot 4.5 that provides:
+@icon("./icon.svg")
+
+## Overview
+
+**ActionManager** is an advanced input manager for Godot 4.5 that provides:
 
 - Long press and long press hold
 - Double tap
@@ -10,185 +14,157 @@
 - Manual input injection (UI, touch, replay, AI)
 - Signals for mouse, keyboard, and gamepad events
 
-It offers a unified API for reliable input handling with full state control.
-
----
-
-## ⚠️ Important Note about Long Press, Double Tap, and Repeat
-
-The following methods:
-
-- `get_action_long_press()`
-- `get_action_double_tap()`
-- `get_action_repeat()`
-
-**consume the event**, meaning calling the getter resets the state.
-
-If you call them multiple times in the same frame:
-
-```gdscript
-if input_manager.get_action_long_press("ui_up"):
-    do_something()
-if input_manager.get_action_long_press("ui_up"):
-    do_something_else()
-```
-
-The second `if` will **not trigger**, because the first call already consumed the event.
-
-✅ Correct usage:
-
-```gdscript
-var lp = input_manager.get_action_long_press("ui_up")
-if lp:
-    do_something()
-if lp:
-    do_something_else()
-```
+It offers a unified API for reliable input handling with full state control. It automatically respects **device-specific Input Actions** configured in Godot.
 
 ---
 
 ## Signals
 
-| Signal                                       | Event                                   |
-| -------------------------------------------- | --------------------------------------- |
-| `unhandled_input(event: InputEvent)`         | Captures any unhandled input from Godot |
-| `mouse_motion(event: InputEventMouseMotion)` | Mouse movement                          |
-| `mouse_button(event: InputEventMouseButton)` | Mouse button clicks                     |
-| `key(event: InputEventKey)`                  | Keyboard keys                           |
-| `joy_button(event: InputEventJoypadButton)`  | Gamepad buttons                         |
-| `joy_motion(event: InputEventJoypadMotion)`  | Gamepad movement                        |
+| Signal                                             | Description                         |
+| -------------------------------------------------- | ----------------------------------- |
+| `all_event(event: InputEvent)`                     | Emitted for any input event.        |
+| `mouse_motion_event(event: InputEventMouseMotion)` | Emitted for mouse motion events.    |
+| `mouse_button_event(event: InputEventMouseButton)` | Emitted for mouse button events.    |
+| `key_event(event: InputEventKey)`                  | Emitted for keyboard key events.    |
+| `joy_button_event(event: InputEventJoypadButton)`  | Emitted for joystick button events. |
+| `joy_motion_event(event: InputEventJoypadMotion)`  | Emitted for joystick motion events. |
 
 ---
 
-## Configuration
+## Public Properties
 
-- `long_press_time: float = 0.5` → Minimum time for long press
-- `double_tap_time: float = 0.25` → Maximum interval between taps for double tap
-- `repeat_delay: float = 0.8` → Delay before repeat starts
-- `repeat_interval: float = 0.8` → Interval between repeated actions
+| Property          | Type  | Default | Description                                         |
+| ----------------- | ----- | ------- | --------------------------------------------------- |
+| `long_press_time` | float | 0.5     | Time in seconds required for a long press.          |
+| `double_tap_time` | float | 0.25    | Maximum time between taps to register a double tap. |
+| `repeat_delay`    | float | 0.8     | Delay before action repeat starts.                  |
+| `repeat_interval` | float | 0.8     | Interval between repeated action triggers.          |
 
 ---
 
-## Main API
+## Usage Examples
 
-### ## get_action_pressed(action: StringName) -> bool
-
-Returns `true` while the action is being pressed.
-Does not consume the event.
+### Basic Action Checks
 
 ```gdscript
-if input_manager.get_action_pressed("ui_up"):
-    print("Holding up")
+if action_manager.get_action_pressed("jump"):
+    print("Jump button pressed")
+
+if action_manager.get_action_oneshot("shoot"):
+    fire_weapon()
+
+if action_manager.get_action_long_press("run"):
+    start_sprinting()
+
+if action_manager.get_action_double_tap("dash"):
+    perform_dash()
+```
+
+### Toggle and Repeat Actions
+
+```gdscript
+if action_manager.get_action_toggle("flashlight"):
+    toggle_flashlight()
+
+if action_manager.get_action_repeat("fire"):
+    fire_bullet()
+
+action_manager.set_action_repeat("fire", 0.5, 0.1)  # custom delay & interval
+```
+
+### Blocking Actions
+
+```gdscript
+action_manager.block_action("jump")
+action_manager.unblock_action("jump")
+
+# Groups
+action_manager.register_action_group("movement", ["left", "right", "up", "down"])
+action_manager.block_group("movement")
+action_manager.unblock_group("movement")
+```
+
+### Manual Input Injection
+
+```gdscript
+action_manager.inject_action("jump", true)   # press action
+action_manager.inject_action("jump", false)  # release action
+```
+
+### Getting Axis or Vector
+
+```gdscript
+# Vector2 from actions
+var move_vec = action_manager.get_vector("left", "right", "up", "down", 0.2)
+
+# Single axis (horizontal)
+var horizontal = action_manager.get_axis("left", "right", 0.15)
+```
+
+### Resetting Actions
+
+```gdscript
+action_manager.reset_action("jump")
+action_manager.reset_all(true)  # also clears repeat config
 ```
 
 ---
 
-### ## get_action_hold(action: StringName) -> bool
+## API Reference
 
-Identical to `get_action_pressed()`. Returns `true` while pressed.
-
----
-
-### ## get_action_oneshot(action: StringName) -> bool
-
-Returns `true` only once, when the action is first pressed.
-The state is consumed when calling the getter.
-
-```gdscript
-if input_manager.get_action_oneshot("ui_accept"):
-    print("Pressed once")
-```
-
----
-
-### ## get_action_toggle(action: StringName) -> bool
-
-Toggles between `true` and `false` each time the action is pressed.
-State is **not automatically consumed**.
-
-```gdscript
-if input_manager.get_action_toggle("ui_up"):
-    print("Toggled ON")
-else:
-    print("Toggled OFF")
-```
+| Method                                                                   | Arguments                   | Return Type | Description                                             |
+| ------------------------------------------------------------------------ | --------------------------- | ----------- | ------------------------------------------------------- |
+| `get_action_pressed(action: StringName)`                                 | action                      | bool        | Returns true while the action is pressed.               |
+| `get_action_hold(action: StringName)`                                    | action                      | bool        | Same as `get_action_pressed`.                           |
+| `get_action_oneshot(action: StringName)`                                 | action                      | bool        | Returns true only once until next press.                |
+| `get_action_toggle(action: StringName)`                                  | action                      | bool        | Toggles true/false each press.                          |
+| `get_action_long_press(action: StringName)`                              | action                      | bool        | Returns true once when a long press is detected.        |
+| `get_action_long_press_hold(action: StringName)`                         | action                      | bool        | Returns true while the button is held after long press. |
+| `get_action_double_tap(action: StringName)`                              | action                      | bool        | Returns true once if a double tap occurs.               |
+| `get_action_repeat(action: StringName)`                                  | action                      | bool        | Returns true repeatedly after repeat delay & interval.  |
+| `set_action_repeat(action: StringName, delay: float, interval: float)`   | action, delay, interval     | void        | Configure custom repeat for an action.                  |
+| `inject_action(action: StringName, pressed: bool)`                       | action, pressed             | void        | Manually inject press/release events.                   |
+| `set_input_enabled(enabled: bool)`                                       | enabled                     | void        | Enables or disables input globally.                     |
+| `block_action(action: StringName)`                                       | action                      | void        | Blocks a specific action.                               |
+| `unblock_action(action: StringName)`                                     | action                      | void        | Unblocks a specific action.                             |
+| `register_action_group(group: StringName, actions: Array[StringName])`   | group, actions              | void        | Registers a group of actions.                           |
+| `block_group(group: StringName)`                                         | group                       | void        | Blocks all actions in the group.                        |
+| `unblock_group(group: StringName)`                                       | group                       | void        | Unblocks all actions in the group.                      |
+| `clear_action_repeat(action: StringName)`                                | action                      | void        | Clears custom repeat config.                            |
+| `reset_action(action: StringName)`                                       | action                      | void        | Resets action state.                                    |
+| `reset_all(reset_actions_repeat_config: bool = false)`                   | reset_actions_repeat_config | void        | Resets all actions, optionally clears repeat config.    |
+| `get_vector(neg_x, pos_x, neg_y, pos_y, dead_zone: float = 0.0)`         | action names                | Vector2     | Returns a normalized vector with deadzone applied.      |
+| `get_axis(neg_action, pos_action, dead_zone: float = 0.15)`              | action names                | float       | Returns a float axis value -1.0 to 1.0 with deadzone.   |
+| `is_action_just_released(action: StringName, exact_match: bool = false)` | action, exact_match         | bool        | Returns true if action was just released.               |
 
 ---
 
-### ## get_action_long_press(action: StringName) -> bool
+## Notes
 
-Returns `true` once when the action exceeds `long_press_time`.
-State is consumed when calling the getter.
-
-```gdscript
-var lp = input_manager.get_action_long_press("ui_up")
-if lp:
-    print("Long press detected")
-```
-
-### ## get_action_long_press_hold(action: StringName) -> bool
-
-Returns `true` while the key is held after reaching `long_press_time`.
-State is **not consumed** automatically.
-
-```gdscript
-if input_manager.get_action_long_press_hold("ui_up"):
-    print("Holding long press")
-```
+- Actions are automatically blocked based on `_blocked_actions` and `_blocked_groups`.
+- Long press and double tap timers are handled internally.
+- `get_vector` and `get_axis` respect the deadzone.
+- Manual injection is useful for AI, replays, or touch UI.
+- Signals allow hooking directly into input events if needed.
+- **Device filtering** is handled by Godot InputMap, no manual filtering is required in ActionManager.
 
 ---
 
-### ## get_action_double_tap(action: StringName) -> bool
-
-Returns `true` if the action was pressed twice quickly within `double_tap_time`.
-State is consumed when calling the getter.
+## Example: Movement
 
 ```gdscript
-if input_manager.get_action_double_tap("ui_up"):
-    print("Double tap!")
+var velocity := Vector2.ZERO
+velocity = action_manager.get_vector("left", "right", "up", "down", 0.2)
+move_character(velocity)
+```
+
+## Example: Shooting with Repeat
+
+```gdscript
+if action_manager.get_action_repeat("shoot"):
+    fire_bullet()
 ```
 
 ---
 
-### ## get_action_repeat(action: StringName) -> bool
-
-Returns `true` at configurable intervals (`repeat_delay` + `repeat_interval`).
-State is consumed when calling the getter.
-
-```gdscript
-input_manager.set_action_repeat("ui_up", 0.5, 0.2)
-if input_manager.get_action_repeat("ui_up"):
-    print("Repeating action")
-```
-
----
-
-### ## inject_action(action: StringName, pressed: bool)
-
-Manually inject input (UI, touch, AI, replay).
-
-```gdscript
-input_manager.inject_action("ui_up", true)  # Press
-input_manager.inject_action("ui_up", false) # Release
-```
-
----
-
-### ## Action Blocking
-
-```gdscript
-input_manager.block_action("ui_up")   # Block specific action
-input_manager.unblock_action("ui_up") # Unblock
-input_manager.register_action_group("movement", ["ui_up", "ui_down"])
-input_manager.block_group("movement")
-input_manager.unblock_group("movement")
-```
-
----
-
-### ## Reset
-
-```gdscript
-input_manager.reset_action("ui_up")  # Reset a single action
-input_manager.reset_all()             # Reset all actions
-```
+ActionManager provides a **robust, unified input API** for complex games, handling both simple presses and advanced actions like repeat, long press, and double tap.
