@@ -91,7 +91,7 @@ func _get_configuration_warnings() -> PackedStringArray:
 # ----------------------------------------------------
 # GET DATA
 # ----------------------------------------------------
-func get_action_data(action_name: StringName) -> ActionManagerAction:
+func get_data_action(action_name: StringName) -> ActionManagerAction:
 	for action in actions_data:
 		if action:
 			if action.action_name == action_name:
@@ -100,7 +100,7 @@ func get_action_data(action_name: StringName) -> ActionManagerAction:
 	return null
 
 
-func get_axis_data(axis_name: StringName) -> ActionManagerAxis:
+func get_data_axis(axis_name: StringName) -> ActionManagerAxis:
 	for axis in axis_data:
 		if axis:
 			if axis.axis_name == axis_name:
@@ -109,7 +109,7 @@ func get_axis_data(axis_name: StringName) -> ActionManagerAxis:
 	return null
 
 
-func get_vector_data(vector_name: StringName) -> ActionManagerVector:
+func get_data_vector(vector_name: StringName) -> ActionManagerVector:
 	for vector in vectors_data:
 		if vector:
 			if vector.vector_name == vector_name:
@@ -122,8 +122,11 @@ func get_vector_data(vector_name: StringName) -> ActionManagerVector:
 # PUBLIC METHODS
 # ----------------------------------------------------
 func get_action(action_name: StringName) -> bool:
-	var action_data: ActionManagerAction = get_action_data(action_name)
+	var action_data: ActionManagerAction = get_data_action(action_name)
 	if not action_data:
+		return false
+
+	if not action_data.enabled and not action_data.action_type == ActionManagerAction.action_type_enum.TOGGLE:
 		return false
 
 	match action_data.action_type:
@@ -155,16 +158,23 @@ func get_action(action_name: StringName) -> bool:
 			return false
 
 
-func get_action_axis(action_name: StringName) -> float:
-	var data: ActionManagerAxis = get_axis_data(action_name)
+func get_axis(action_name: StringName) -> float:
+	var data: ActionManagerAxis = get_data_axis(action_name)
 	if not data:
 		return 0.0
+
+	if not data.enabled:
+		return 0.0
+
 	return Input.get_axis(data.negative_x, data.positive_x)
 
 
-func get_action_vector(action_name: StringName, dead_zone: float = -1.0) -> Vector2:
-	var vector: ActionManagerVector = get_vector_data(action_name)
+func get_vector(action_name: StringName, dead_zone: float = -1.0) -> Vector2:
+	var vector: ActionManagerVector = get_data_vector(action_name)
 	if not vector:
+		return Vector2.ZERO
+
+	if not vector.enabled:
 		return Vector2.ZERO
 
 	return Input.get_vector(
@@ -221,7 +231,7 @@ func _handle_vectors() -> void:
 
 func _update_actions(delta: float) -> void:
 	for action in actions_data:
-		if action:
+		if action and action.enabled:
 			action.update(delta)
 
 
@@ -232,7 +242,7 @@ func _update_joysticks() -> void:
 
 		if joystick.has_meta("am_vector"):
 			var vector = joystick.get_meta("am_vector")
-			if vector:
+			if vector and vector.enabled:
 				vector.set_virtual_vector(joystick.get_value())
 
 

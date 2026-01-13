@@ -4,6 +4,11 @@
 
 class_name ActionManagerAction extends Resource
 
+@export var enabled: bool = true:
+	set(value):
+		enabled = value
+		if is_instance_valid(owner):
+			owner.update_configuration_warnings()
 
 @export_placeholder("Action name") var action_name: String:
 	set(value):
@@ -64,14 +69,25 @@ var _waiting_second_press: bool = false
 
 
 func inject_pressed(action_name: StringName) -> void:
+	if not enabled:
+		return
 	Input.action_press(action_name)
 
 
 func inject_released(action_name: StringName) -> void:
+	if not enabled:
+		return
 	Input.action_release(action_name)
 
 
 func update(delta: float) -> void:
+	if not enabled:
+		_event_fired = false
+		_hold_state = false
+		_waiting_second_press = false
+		_double_timer = 0.0
+		return
+		
 	if action.strip_edges() == "":
 		return
 

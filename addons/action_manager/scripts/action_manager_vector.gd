@@ -4,6 +4,11 @@
 
 class_name ActionManagerVector extends Resource
 
+@export var enabled: bool = true:
+	set(value):
+		enabled = value
+		if is_instance_valid(owner):
+			owner.update_configuration_warnings()
 
 @export_placeholder("Action name") var vector_name: String:
 	set(value):
@@ -51,6 +56,13 @@ var _trigger_joystick: bool = false
 
 
 func inject_vector(value: Vector2) -> void:
+	if not enabled:
+		Input.action_release(negative_x)
+		Input.action_release(positive_x)
+		Input.action_release(negative_y)
+		Input.action_release(positive_y)
+		return
+
 	Input.action_release(negative_x)
 	Input.action_release(positive_x)
 	Input.action_release(negative_y)
@@ -80,6 +92,12 @@ func inject_vector(value: Vector2) -> void:
 
 
 func set_virtual_vector(value: Vector2) -> void:
+	if not enabled:
+		if not _trigger_joystick:
+			inject_vector(Vector2.ZERO)
+			_trigger_joystick = true
+		return
+		
 	if value.length() > 0.0:
 		inject_vector(value)
 		_trigger_joystick = false
