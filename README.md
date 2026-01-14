@@ -98,9 +98,7 @@ Inside an **ActionManagerAction**, point the **touch_screen_button_path** to you
 
 ## Screenshots
 
-!["quick expressions"](screenshots/2.0/2.gif)
-
-!["expressions"](screenshots/2.0/1.gif)
+!["quick expressions"](screenshots/1.png)
 
 ---
 
