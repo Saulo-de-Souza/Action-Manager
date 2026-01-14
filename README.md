@@ -1,9 +1,5 @@
 # Action Manager for Godot 4.x
 
-![Godot Engine](https://img.shields.io/badge/Godot-%23FFFFFF.svg?style=for-the-badge&logo=godot-engine)
-![Category](https://img.shields.io/badge/Category-Input-green.svg?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)
-
 The **Action Manager** is a robust solution for managing inputs in the Godot Engine. It extends the native system to support complex behaviors and offers seamless integration for mobile controls (TouchScreenButtons and Joysticks), injecting events directly into the global Input system.
 
 ---
@@ -39,10 +35,9 @@ Each action can be configured with one of the following behaviors:
 1. **Add the Node:** Instantiate the `ActionManager` node (a `CanvasLayer`) in your scene.
 2. **Define the Processing:** In the Inspector, choose between `Physics Process` (recommended) or `Process`.
 3. **Create the Resources:**
-
-- **Actions Data:** For simple or complex buttons (Jump, Dash, Attack).
-- **Axis Data:** For 1D axes (Lateral movement, Zoom).
-- **Vectors Data:** For 2D movement (WASD, Arrow keys, or Joysticks).
+   - **Actions Data:** For simple or complex buttons (Jump, Dash, Attack).
+   - **Axis Data:** For 1D axes (Lateral movement, Zoom).
+   - **Vectors Data:** For 2D movement (WASD, Arrow keys, or Joysticks).
 
 ---
 
@@ -55,26 +50,22 @@ extends CharacterBody2D
 
 @onready var action_manager = $ActionManager
 
-func _physics_process(delta):
+func _physics_process(delta: float):
 
-# Obtaining a Vector2 (works with Keyboard or Virtual Joystick)
+    # Obtaining a Vector2 (works with Keyboard or Virtual Joystick)
+    var move_dir = action_manager.get_vector("Movement")
+    velocity = move_dir * 300
+    move_and_slide()
 
-var move_dir = action_manager.get_vector("Movement")
-velocity = move_dir * 300
-move_and_slide()
+    # Checking for a double click for Dash
+    if action_manager.get_action("Dash"):
+        print("Double Click Dash!")
 
-# Checking for a double click for Dash
-if action_manager.get_action("Dash"):
-
-print("Double Click Dash!")
-
-# Checking for a Toggle mode for Flashlight
-if action_manager.get_action("Flashlight"):
-$SpotLight2D.enabled = true
-
-else:
-
-$SpotLight2D.enabled = false
+    # Checking for a Toggle mode for Flashlight
+    if action_manager.get_action("Flashlight"):
+        $SpotLight2D.enabled = true
+    else:
+        $SpotLight2D.enabled = false
 ```
 
 ---
