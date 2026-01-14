@@ -61,7 +61,6 @@ class_name ActionManagerVector extends Resource
 
 
 var owner: ActionManager
-var _default_deadzone: float = 0.0
 var _trigger_joystick: bool = false
 
 

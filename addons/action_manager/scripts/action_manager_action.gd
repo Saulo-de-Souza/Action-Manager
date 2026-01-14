@@ -110,16 +110,16 @@ var _double_timer: float = 0.0
 var _waiting_second_press: bool = false
 
 
-func _inject_pressed(action_name: StringName) -> void:
+func _inject_pressed(_action_name: StringName) -> void:
 	if not enabled:
 		return
-	Input.action_press(action_name)
+	Input.action_press(_action_name)
 
 
-func _inject_released(action_name: StringName) -> void:
+func _inject_released(_action_name: StringName) -> void:
 	if not enabled:
 		return
-	Input.action_release(action_name)
+	Input.action_release(_action_name)
 
 
 func _update(delta: float) -> void:
