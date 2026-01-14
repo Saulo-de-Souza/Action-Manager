@@ -2,12 +2,22 @@
 @icon("./icon.svg")
 
 
+## [b]Action Manager[/b] is a superclass built upon Godot's Input singleton that offers:[br]
+## [br]
+## Configuration of action types: TOGGLE, LONG PRESS, LONG PRESS HOLD, REPEAT, DOUBLE PRESS, as well as PRESSED, JUST_PRESSED, and JUST_RELEASED.[br]
+## [br]
+## Attach TouchScreenButtons to events.[br]
+## [br]
+## It comes with a Virtual Joystick named ActionManagerJoystick. Simply create and connect it to the Action Manager.
 class_name ActionManager extends CanvasLayer
 
 
 # ----------------------------------------------------
 # EXPORTS
 # ----------------------------------------------------
+## If you choose Physics, the long press and repeat time will be based on physics_process.[br]
+## Otherwise, it will be based on process.[br]
+## We advise using physics because that's where you'll want to handle events.[br]
 @export_enum("Physics Process", "Process") var input_processing: int = 0:
 	set(value):
 		input_processing = value
@@ -15,6 +25,8 @@ class_name ActionManager extends CanvasLayer
 		update_configuration_warnings()
 
 @export_group("Actions")
+## These are the actions you want to work with. [br]
+## For example: [code]"ui_accept", "ui_left", "ui_right"[/code], etc.
 @export var actions_data: Array[ActionManagerAction]:
 	set(value):
 		actions_data = value
@@ -27,6 +39,7 @@ class_name ActionManager extends CanvasLayer
 		update_configuration_warnings()
 
 @export_group("Axis")
+## These are the actions used to create horizontal or vertical movement, for example, using [b]negative x and positive x[/b] to obtain a [code]float[/code].
 @export var axis_data: Array[ActionManagerAxis]:
 	set(value):
 		axis_data = value
@@ -39,6 +52,7 @@ class_name ActionManager extends CanvasLayer
 		update_configuration_warnings()
 
 @export_group("Vectors")
+## These are the actions used to create a 3D movement, for example, [b]negative x, positive x, negative y, and positive y[/b] to obtain a [code]Vector2[/code].
 @export var vectors_data: Array[ActionManagerVector]:
 	set(value):
 		vectors_data = value
@@ -51,8 +65,9 @@ class_name ActionManager extends CanvasLayer
 		update_configuration_warnings()
 
 
-var am_warning_once: ActionManagerWarningOnce = ActionManagerWarningOnce.new()
+var _am_warning_once: ActionManagerWarningOnce = ActionManagerWarningOnce.new()
 var _joysticks: Array[ActionManagerJoystick] = []
+var _warnings: PackedStringArray = []
 
 
 # ----------------------------------------------------
@@ -63,6 +78,12 @@ func _ready():
 	_update_input_processing()
 	_handle_actions()
 	_handle_vectors()
+	
+	if not Engine.is_editor_hint():
+		_warings_actions(_warnings)
+		_warings_axis(_warnings)
+		_warings_vectors(_warnings)
+		_warnings_global(_warnings)
 
 
 func _process(delta: float) -> void:
@@ -73,54 +94,54 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	_update_actions(delta)
 	_update_joysticks()
-	
-	
+
+
 func _get_configuration_warnings() -> PackedStringArray:
-	var warnings: PackedStringArray = []
-
-	if input_processing == 1 and (axis_data.size() > 0 or vectors_data.size() > 0):
-		warnings.append("Axis and Vector inputs are recommended to use Physics Process.")
-		
-	_warings_actions(warnings)
-	_warings_axis(warnings)
-	_warings_vectors(warnings)
-
-	return warnings
+	_warnings = []
+	_warings_actions(_warnings)
+	_warings_axis(_warnings)
+	_warings_vectors(_warnings)
+	_warnings_global(_warnings)
+	return _warnings
 
 
 # ----------------------------------------------------
 # GET DATA
 # ----------------------------------------------------
+## Get an ActionManagerAction by its name.
 func get_data_action(action_name: StringName) -> ActionManagerAction:
 	for action in actions_data:
 		if action:
 			if action.action_name == action_name:
 				return action
-	am_warning_once.push_warning("5", "Action %s not found." % action_name)
+	_am_warning_once.push_warning("5", "Action %s not found." % action_name)
 	return null
 
 
+## Get an ActionManagerAxis by its name.
 func get_data_axis(axis_name: StringName) -> ActionManagerAxis:
 	for axis in axis_data:
 		if axis:
 			if axis.axis_name == axis_name:
 				return axis
-	am_warning_once.push_warning("4", "Axis %s not found." % axis_name)
+	_am_warning_once.push_warning("4", "Axis %s not found." % axis_name)
 	return null
 
 
+## Get an ActionManagerVector by its name.
 func get_data_vector(vector_name: StringName) -> ActionManagerVector:
 	for vector in vectors_data:
 		if vector:
 			if vector.vector_name == vector_name:
 				return vector
-	am_warning_once.push_warning("3", "Vector %s not found." % vector_name)
+	_am_warning_once.push_warning("3", "Vector %s not found." % vector_name)
 	return null
 
 
 # ----------------------------------------------------
 # PUBLIC METHODS
 # ----------------------------------------------------
+## Check if an action is being executed.
 func get_action(action_name: StringName) -> bool:
 	var action_data: ActionManagerAction = get_data_action(action_name)
 	if not action_data:
@@ -158,6 +179,7 @@ func get_action(action_name: StringName) -> bool:
 			return false
 
 
+## Check if an axis is being executed.
 func get_axis(action_name: StringName) -> float:
 	var data: ActionManagerAxis = get_data_axis(action_name)
 	if not data:
@@ -169,6 +191,7 @@ func get_axis(action_name: StringName) -> float:
 	return Input.get_axis(data.negative_x, data.positive_x)
 
 
+## ## Check if an vector is being executed.
 func get_vector(action_name: StringName, dead_zone: float = -1.0) -> Vector2:
 	var vector: ActionManagerVector = get_data_vector(action_name)
 	if not vector:
@@ -204,13 +227,13 @@ func _handle_actions() -> void:
 				if touch is TouchScreenButton:
 					touch.action = ""
 					touch.pressed.connect(func():
-						action.inject_pressed(action.action)
+						action._inject_pressed(action.action)
 					)
 					touch.released.connect(func():
-						action.inject_released(action.action)
+						action._inject_released(action.action)
 					)
 				else:
-					am_warning_once.push_warning("2", "The touch_screen_button_path property must be of type TouchScreenButton. Consider adding a TouchScreenButton.")
+					_am_warning_once.push_warning("2", "The touch_screen_button_path property must be of type TouchScreenButton. Consider adding a TouchScreenButton.")
 
 
 func _handle_vectors() -> void:
@@ -220,19 +243,16 @@ func _handle_vectors() -> void:
 				var joystick = get_node(vector.action_manager_joystick_path)
 				if joystick:
 					if joystick is ActionManagerJoystick:
-						#joystick.analogic_changed.connect(func(value: Vector2, distance: float, angle: float, angle_clockwise: float, angle_not_clockwise: float):
-							#vector.inject_vector(value)
-							#)
 						joystick.set_meta("am_vector", vector)
 						_joysticks.append(joystick)
 					else:
-						am_warning_once.push_warning("1", "The action_manager_joystick_path property must be of type ActionManagerJoystick. Consider adding a ActionManagerJoystick.")
+						_am_warning_once.push_warning("1", "The action_manager_joystick_path property must be of type ActionManagerJoystick. Consider adding a ActionManagerJoystick.")
 
 
 func _update_actions(delta: float) -> void:
 	for action in actions_data:
 		if action and action.enabled:
-			action.update(delta)
+			action._update(delta)
 
 
 func _update_joysticks() -> void:
@@ -243,7 +263,7 @@ func _update_joysticks() -> void:
 		if joystick.has_meta("am_vector"):
 			var vector = joystick.get_meta("am_vector")
 			if vector and vector.enabled:
-				vector.set_virtual_vector(joystick.get_value())
+				vector._set_virtual_vector(joystick.get_value())
 
 
 func _update_input_processing() -> void:
@@ -305,7 +325,7 @@ func _warings_axis(warnings: PackedStringArray) -> void:
 
 			if axis.negative_x == axis.positive_x:
 				warnings.append("In Axis Data (%s), negative_x has the same value as positive_x .Consider assigning a different action to each." % axis.axis_name)
-				
+
 			for axis_2 in axis_data:
 				if axis_2:
 					if not axis.get_instance_id() == axis_2.get_instance_id():
@@ -351,21 +371,27 @@ func _warings_vectors(warnings: PackedStringArray) -> void:
 			# CHECK VALUES
 			if vector.negative_x == vector.positive_x:
 				warnings.append("In Vectors Data (%s), negative_x has the same value as positive_x .Consider assigning a different action to each." % vector.vector_name)
-				
+
 			if vector.negative_x == vector.negative_y:
 				warnings.append("In Vectors Data (%s), negative_x has the same value as negative_y .Consider assigning a different action to each." % vector.vector_name)
-				
+
 			if vector.positive_x == vector.negative_y:
 				warnings.append("In Vectors Data (%s), positive_x has the same value as negative_y .Consider assigning a different action to each." % vector.vector_name)
-				
+
 			if vector.negative_x == vector.positive_x:
 				warnings.append("In Vectors Data (%s), negative_x has the same value as positive_x .Consider assigning a different action to each." % vector.vector_name)
-			
+
 			if vector.negative_y == vector.positive_y:
 				warnings.append("In Vectors Data (%s), negative_y has the same value as positive_y .Consider assigning a different action to each." % vector.vector_name)
-				
+
 			for vector_2 in vectors_data:
 				if vector_2:
 					if not vector.get_instance_id() == vector_2.get_instance_id():
 						if vector.vector_name == vector_2.vector_name:
 							return warnings.append("In Vectors Data, there are duplicate vector_names (%s). Consider using a unique name." % vector.vector_name)
+
+
+func _warnings_global(warnings: PackedStringArray) -> void:
+	if input_processing == 1 and (axis_data.size() > 0 or vectors_data.size() > 0):
+		warnings.append("Axis and Vector inputs are recommended to use Physics Process.")
+		_am_warning_once.push_warning("6", "Axis and Vector inputs are recommended to use Physics Process.")

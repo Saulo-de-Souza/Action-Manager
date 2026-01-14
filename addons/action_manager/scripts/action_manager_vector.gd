@@ -4,42 +4,52 @@
 
 class_name ActionManagerVector extends Resource
 
+
+## Enables or disables the execution of vectors.
 @export var enabled: bool = true:
 	set(value):
 		enabled = value
 		if is_instance_valid(owner):
 			owner.update_configuration_warnings()
 
+## This is the name you will give to the vector and which you will call via the get_vector(vector_name: StringName) function.[br]
+## Example: [code]var dir: Vector3 = $action_manager.get_vector("Move")[/code]
 @export_placeholder("Action name") var vector_name: String:
 	set(value):
 		vector_name = value
 		if is_instance_valid(owner):
 			owner.update_configuration_warnings()
 
+## It is the x-axis of the negative quadrant of the 2D coordinate system. For example, the action [code]"ui_left"[/code].
 @export var negative_x: StringName:
 	set(value):
 		negative_x = value
 		if is_instance_valid(owner):
 			owner.update_configuration_warnings()
 
+## It is the x-axis of the positive quadrant of the 2D coordinate system. For example, the action [code]"ui_right"[/code].
 @export var positive_x: StringName:
 	set(value):
 		positive_x = value
 		if is_instance_valid(owner):
 			owner.update_configuration_warnings()
 
+## It is the y-axis of the negative quadrant of the 2D coordinate system. For example, the action [code]"ui_up"[/code].
 @export var negative_y: StringName:
 	set(value):
 		negative_y = value
 		if is_instance_valid(owner):
 			owner.update_configuration_warnings()
 
+## It is the y-axis of the positive quadrant of the 2D coordinate system. For example, the action [code]"ui_down"[/code].
 @export var positive_y: StringName:
 	set(value):
 		positive_y = value
 		if is_instance_valid(owner):
 			owner.update_configuration_warnings()
 
+## When you activate this plugin, it makes available a new node called [b]ActionManagerJoystick[/b], which can be used to create an on-screen joystick for new devices.[br]
+## Search for the [b]ActionManagerJoystick[/b] node and associate it here.
 @export var action_manager_joystick_path: NodePath:
 	set(value):
 		action_manager_joystick_path = value
@@ -55,7 +65,7 @@ var _default_deadzone: float = 0.0
 var _trigger_joystick: bool = false
 
 
-func inject_vector(value: Vector2) -> void:
+func _inject_vector(value: Vector2) -> void:
 	if not enabled:
 		Input.action_release(negative_x)
 		Input.action_release(positive_x)
@@ -91,19 +101,19 @@ func inject_vector(value: Vector2) -> void:
 		Input.action_release(positive_y)
 
 
-func set_virtual_vector(value: Vector2) -> void:
+func _set_virtual_vector(value: Vector2) -> void:
 	if not enabled:
 		if not _trigger_joystick:
-			inject_vector(Vector2.ZERO)
+			_inject_vector(Vector2.ZERO)
 			_trigger_joystick = true
 		return
 		
 	if value.length() > 0.0:
-		inject_vector(value)
+		_inject_vector(value)
 		_trigger_joystick = false
 	else:
 		if not _trigger_joystick:
-			inject_vector(Vector2.ZERO)
+			_inject_vector(Vector2.ZERO)
 			_trigger_joystick = true
 
 
