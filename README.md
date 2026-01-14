@@ -95,3 +95,19 @@ Inside an **ActionManagerAction**, point the **touch_screen_button_path** to you
 `ActionManagerVector`: Resource for directional mapping (Vector2) and Joystick support.
 
 ---
+
+## Screenshots
+
+!["quick expressions"](screenshots/2.0/2.gif)
+
+!["expressions"](screenshots/2.0/1.gif)
+
+---
+
+## ❤️ Support
+
+### If this project helped you, please consider supporting it:
+
+Github Sponsors: https://github.com/sponsors/Saulo-de-Souza
+
+Paypal: https://www.paypal.com/donate/?hosted_button_id=G24W4KL9ALH64
